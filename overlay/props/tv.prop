@@ -1,0 +1,11 @@
+# TV 化属性(合并进 /system/build.prop,已存在的键会被覆盖)
+# 这些属性让系统与 App 更倾向于 TV 形态:
+ro.build.characteristics=tv
+ro.device_ui_type=TV
+# 取消注释可让部分 App 认为这是 1080p TV:
+# ro.sf.lcd_density=320
+
+# 以下为常见可选项,默认全部注释,按需打开:
+# 关掉开机音(部分机型路径不同,无效就删除)
+# ro.config.ringtone=
+# persist.sys.rk_usb_switch=1

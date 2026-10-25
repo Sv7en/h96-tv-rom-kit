@@ -1,0 +1,117 @@
+name: build TV rom
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'overlay/**'
+      - 'scripts/**'
+      - 'tools/**'
+      - '.github/workflows/build.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  surgery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
+                       /usr/local/.ghcup /opt/hostedtoolcache/CodeQL || true
+          sudo apt-get clean || true
+          df -h /
+
+      - name: Install ext4 tools
+        run: sudo apt-get update -q && sudo apt-get install -y -q e2fsprogs
+
+      - name: Download base image
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p work
+          gh release download base-image --repo "$GITHUB_REPOSITORY" \
+            --pattern 'base.img.part*' --dir work
+          cat $(ls work/base.img.part* | sort) > work/original.img
+          rm -f work/base.img.part*
+          ls -la work/original.img
+
+      - name: Download preinstall APKs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p work/apps/system-app work/apps/system-priv-app
+          if [ -f overlay/apps.txt ]; then
+            while IFS= read -r line; do
+              case "$line" in ''|\#*) continue;; esac
+              dest="system-app"
+              if [[ "$line" == priv:* ]]; then
+                dest="system-priv-app"; line="${line#priv:}"
+              fi
+              if [[ "$line" == @latest:* ]]; then
+                repo="${line#@latest:}"
+                url=$(gh api "repos/$repo/releases/latest" --jq '.assets[] | select(.name | endswith(".apk")) | .browser_download_url' | head -1)
+                [ -n "$url" ] || { echo "no apk asset in $repo latest release"; exit 1; }
+              else
+                url="$line"
+              fi
+              fname=$(basename "$url" | sed 's/[?#].*//')
+              stem=$(echo "$fname" | sed 's/\.[^.]*$//')
+              mkdir -p "work/apps/$dest/$stem"
+              curl -fL --retry 3 -o "work/apps/$dest/$stem/$fname" "$url"
+            done < overlay/apps.txt
+            find work/apps -name '*.apk' -exec ls -la {} \; || true
+          fi
+          # bundled apks (dangbei etc.) must be committed under overlay/apks
+          ls -la overlay/apks/ || true
+
+      - name: Run surgery on super
+        run: bash scripts/surgery.sh overlay
+
+      - name: Repack update.img
+        run: |
+          python3 tools/rkfw.py pack work/original.img \
+            --set super=work/out/super_sparse.img \
+            --set vbmeta=work/out/vbmeta.img \
+            -o work/out/update-tv.img
+          python3 tools/rkfw.py info work/out/update-tv.img
+
+      - name: Self-check output integrity
+        run: |
+          python3 - <<'EOF'
+          import hashlib, sys
+          p = 'work/out/update-tv.img'
+          h = hashlib.md5()
+          size = 0
+          with open(p,'rb') as f:
+              f.seek(0, 2); total = f.tell(); f.seek(0)
+              left = total - 32
+              while left:
+                  c = f.read(min(1<<24, left)); h.update(c); left -= len(c)
+          with open(p,'rb') as f:
+              f.seek(total-32); tail = f.read(32).decode()
+          print('embedded md5:', tail)
+          print('computed md5:', h.hexdigest())
+          sys.exit(0 if tail == h.hexdigest() else 1)
+          EOF
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: update-tv-${{ github.run_number }}
+          compression-level: 0
+          path: work/out/update-tv.img
+
+      - name: Attach to release (manual runs only)
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="tv-build-${GITHUB_RUN_NUMBER}"
+          gh release create "$TAG" --title "TV build #$GITHUB_RUN_NUMBER" \
+            --notes "automated surgery build" --prerelease || true
+          gh release upload "$TAG" work/out/update-tv.img --clobber

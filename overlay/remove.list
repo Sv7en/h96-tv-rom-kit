@@ -1,0 +1,38 @@
+# remove.list — 相对 ext4 根(system/ 开头);# 为注释
+# 标准:国内网络不可用 / 无 GMS 跑不起来 / 厂商私货,全部清除
+# 本方案合计删除约 757MB,预装当贝市场+桌面仅约 26MB,空间余量巨大
+
+# ============ 出厂私货区(整目录,~267MB)============
+# APKPure/AirScreen/Amazon Prime/CetusPlay/CyberFlixTV(盗版)/Mobdro(盗版)/
+# NetFlix(非认证侧载)/Nova_Video/RKMC(老旧 Kodi 分支)/Tubi/X-plore
+system/preinstall
+
+# ============ 国内不可用(无 GMS 或网络不可达)============
+system/priv-app/Velvet          # Google App 壳,152MB,全 ROM 最大死重
+system/app/YouTube              # 无 GMS 打不开,43MB
+system/app/SmartYouTube         # 依赖 YouTube 服务,国内网络不可达,33MB
+system/app/GoogleTTS            # GMS 语音,32MB
+system/app/Chrome               # 无法登录同步,137MB
+system/app/Firefox              # 遥控器操作浏览器体验极差,21MB(要用从当贝市场装)
+
+# ============ 桌面:换当贝桌面后删掉原厂手机风桌面 ============
+system/app/MsLauncher_v1        # 15MB,电视盒用手机桌面的元凶
+
+# ============ 厂商 OTA:会把我们的定制刷回原厂,必须删 ============
+system/priv-app/SystemFota
+system/app/RKUpdateService
+
+# ============ 工厂测试 / 无关私货 ============
+system/app/disney_plus
+system/app/ProductTest
+system/app/RKDeviceTest
+system/priv-app/StressTest
+system/priv-app/projectX        # OpenCV 人脸 demo,14MB
+system/app/PinyinIME            # 拼音输入法,1.4MB
+# system/priv-app/MediaCenter  # RK 本地播放器,21MB,可留可删
+
+# ============ 保留(国内可用,勿删)============
+# BoxLatinIME(19MB,遥控器输入法)
+# WifiDisplay(投屏)/ DLNA / ChangeLed(LED 控制)
+# TvSettings / SystemUIWithLegacyRecents / TvProvider / SettingsProvider 等系统件
+# 其他系统组件(Bluetooth/DocumentsUI/DownloadProvider/...)不动

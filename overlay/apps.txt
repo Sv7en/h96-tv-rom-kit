@@ -1,0 +1,11 @@
+# apps.txt — CI 构建时在线下载并预装的 APK(每行一条,可选)
+# 注意:当贝系应用不在这里 —— 它们的 CDN 拦截海外 CI,请下载后放进
+#      overlay/apks/ 目录随仓库提交(见 overlay/apks/README.md)
+#
+# 支持两种写法:
+#   1) 直接下载地址(https://...apk)
+#   2) @latest:owner/repo   —— GitHub 仓库最新 Release 的第一个 apk
+#   3) 行首加 "priv:" 装进 /system/priv-app(默认装 /system/app)
+#
+# 国内方案默认不需要以下条目;如想要海外开源启动器可取消注释:
+# @latest:spocky/miproja1
