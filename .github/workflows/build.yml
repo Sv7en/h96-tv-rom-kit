@@ -38,7 +38,13 @@ jobs:
             --pattern 'base.img.part*' --dir work
           cat $(ls work/base.img.part* | sort) > work/original.img
           rm -f work/base.img.part*
-          ls -la work/original.img
+          echo "joined: $(stat -c%s work/original.img) bytes"
+          EXPECTED=$(cat base.md5)
+          ACTUAL=$(md5sum work/original.img | awk '{print $1}')
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "FATAL: joined base image md5 mismatch: $ACTUAL != $EXPECTED"; exit 1
+          fi
+          echo "base image md5 verified: $ACTUAL"
 
       - name: Download preinstall APKs
         env:
